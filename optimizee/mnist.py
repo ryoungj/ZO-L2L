@@ -95,8 +95,6 @@ class MnistAttack(optimizee.Optimizee):
 
         self.loss_type = loss_type
 
-        self.scale = 1.0
-
     @staticmethod
     def dataset_loader(data_dir, batch_size, test_batch_size, train_num=100, test_num=10):
         path = os.path.join(data_dir, "mnist_correct/label_correct_index.npy")
@@ -159,9 +157,9 @@ class MnistAttack(optimizee.Optimizee):
         loss_attack = loss_attack.mean()
 
         if not return_tuple:
-            return (loss_attack + self.c * loss_distort) * self.bs * self.scale
+            return (loss_attack + self.c * loss_distort) * self.bs
         else:
-            return (loss_attack * self.scale, self.c * loss_distort * self.scale)
+            return (loss_attack, self.c * loss_distort)
 
     def nondiff_loss(self, weight, x, tgt, batch_weight=False):
         if not batch_weight:
@@ -190,7 +188,7 @@ class MnistAttack(optimizee.Optimizee):
             loss_attack = torch.max(correct_log_prob - max_wrong_log_prob, max_wrong_log_prob.new_ones(()) * -self.gap)
             loss_attack = loss_attack.mean()
 
-            return (loss_attack + self.c * loss_distort) * self.bs * self.scale
+            return (loss_attack + self.c * loss_distort) * self.bs
         else:
             x_ = x.unsqueeze(0)  # (1, B, *)
             x = x * 0.3081 + 0.1307  # [0, 1]
@@ -222,4 +220,4 @@ class MnistAttack(optimizee.Optimizee):
             loss_attack = torch.max(correct_log_prob - max_wrong_log_prob, max_wrong_log_prob.new_ones(()) * -self.gap)
             loss_attack = loss_attack.mean(dim=1)
 
-            return (loss_attack + self.c * loss_distort) * self.bs * self.scale
+            return (loss_attack + self.c * loss_distort) * self.bs

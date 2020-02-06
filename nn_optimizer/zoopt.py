@@ -9,6 +9,7 @@ import nn_optimizer
 import optimizee
 
 
+# ZO optimizer (UpdateRNN only)
 class ZOOptimizer(nn_optimizer.NNOptimizer):
 
     def __init__(self, model, args, num_layers=1, input_dim=1, hidden_size=10):
@@ -22,7 +23,6 @@ class ZOOptimizer(nn_optimizer.NNOptimizer):
         self.num_layers = num_layers
         self.input_dim = input_dim
 
-        self.grad_est = args.grad_est
         self.q = args.grad_est_q
 
     def reset_state(self, keep_states=False, model=None, use_cuda=False, gpu_num=0):
@@ -58,7 +58,6 @@ class ZOOptimizer(nn_optimizer.NNOptimizer):
 
         self.step += 1
 
-        assert self.grad_est == "Avg"
         flat_grads = torch.zeros_like(model.get_params())
         for _ in range(self.q):
             u = torch.randn_like(model.get_params())  # sampled query direction
@@ -79,6 +78,7 @@ class ZOOptimizer(nn_optimizer.NNOptimizer):
         return self.meta_model.model, loss, f_x
 
 
+# ZO optimizer (both UpdateRNN and QueryRNN)
 class VarReducedZOOptimizer(nn_optimizer.NNOptimizer):
 
     def __init__(self, model, args, num_layers=1, input_dim=1, hidden_size=10, ckpt_path=""):
@@ -108,9 +108,7 @@ class VarReducedZOOptimizer(nn_optimizer.NNOptimizer):
         self.num_layers = num_layers
         self.input_dim = input_dim
 
-        self.grad_est = args.grad_est
         self.q = args.grad_est_q
-        assert self.grad_est == "Avg"
 
         if ckpt_path != "":
             self.warm_start(ckpt_path)
@@ -165,7 +163,6 @@ class VarReducedZOOptimizer(nn_optimizer.NNOptimizer):
 
     def meta_update(self, model, data, target, pred_update=True, pred_query=True, guided=False, base_lr=4):
         # compute the zeroth-order gradient estimate of the model
-
         f_x = model(data)
         loss = model.loss(f_x, target)
 
@@ -188,7 +185,7 @@ class VarReducedZOOptimizer(nn_optimizer.NNOptimizer):
             self.std = self.std / self.std.norm() * torch.ones_like(self.std).norm()
 
         flat_grads = torch.zeros_like(model.get_params())
-        if not guided:
+        if not guided:  # QueryRNN to propose sampling covariance
             pred_ratio = 0.5
             if self.training:
                 pred = True
@@ -200,7 +197,7 @@ class VarReducedZOOptimizer(nn_optimizer.NNOptimizer):
                 if pred_query and pred:
                     u = u * self.std.abs() + self.mean
                 flat_grads += self.GradientEstimate(model, data, target, u) * u
-        else:
+        else:  # use Guided-ES to propose sampling covariance
             k = 2
             n = model.get_params().size(0)
             alpha = 0.5

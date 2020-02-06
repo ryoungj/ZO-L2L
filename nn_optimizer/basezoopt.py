@@ -7,10 +7,10 @@ import nn_optimizer
 import optimizee
 
 
+# ZO-SGD
 class BaseZOOptimizer(nn_optimizer.NNOptimizer):
     def __init__(self, model, args, lr=25):
         super(BaseZOOptimizer, self).__init__(model, args)
-        self.grad_est = args.grad_est
         self.q = args.grad_est_q
         self.lr = lr
 
@@ -21,7 +21,6 @@ class BaseZOOptimizer(nn_optimizer.NNOptimizer):
         f_x = model(data)
         loss = model.loss(f_x, target)
 
-        assert self.grad_est == "Avg"
         flat_grads = torch.zeros_like(model.get_params())
         for _ in range(self.q):
             u = torch.randn_like(model.get_params())  # sampled query direction
@@ -37,10 +36,10 @@ class BaseZOOptimizer(nn_optimizer.NNOptimizer):
         return None, loss, f_x
 
 
+# ZO-signSGD
 class SignZOOptimizer(nn_optimizer.NNOptimizer):
     def __init__(self, model, args, lr=25):
         super(SignZOOptimizer, self).__init__(model, args)
-        self.grad_est = args.grad_est
         self.q = args.grad_est_q
         self.lr = lr
 
@@ -51,7 +50,6 @@ class SignZOOptimizer(nn_optimizer.NNOptimizer):
         f_x = model(data)
         loss = model.loss(f_x, target)
 
-        assert self.grad_est == "Avg"
         flat_grads = torch.zeros_like(model.get_params())
         for _ in range(self.q):
             u = torch.randn_like(model.get_params())  # sampled query direction
@@ -66,10 +64,10 @@ class SignZOOptimizer(nn_optimizer.NNOptimizer):
         return None, loss, f_x
 
 
+# ZO-ADAM
 class AdamZOOptimizer(nn_optimizer.NNOptimizer):
     def __init__(self, model, args, lr=25, beta_1=0.9, beta_2=0.996):
         super(AdamZOOptimizer, self).__init__(model, args)
-        self.grad_est = args.grad_est
         self.q = args.grad_est_q
         self.lr = lr
         self.beta_1 = beta_1
@@ -86,7 +84,6 @@ class AdamZOOptimizer(nn_optimizer.NNOptimizer):
 
         self.step += 1
 
-        assert self.grad_est == "Avg"
         flat_grads = torch.zeros_like(model.get_params())
         for _ in range(self.q):
             u = torch.randn_like(model.get_params())  # sampled query direction

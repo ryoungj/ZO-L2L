@@ -4,7 +4,9 @@ from torch import optim
 import nn_optimizer
 import optimizee
 
+# Only `MNIST attack` task support yet
 tasks = {
+    # train ZO optimizer (UpdateRNN only) for MNIST attack
     'ZOL2L-Attack': {
         'nn_optimizer': nn_optimizer.zoopt.ZOOptimizer,
         'optimizee': optimizee.mnist.MnistAttack,
@@ -27,6 +29,7 @@ tasks = {
             'base_lr': 4,
         }
     },
+    # train ZO optimizer (both UpdateRNN and QueryRNN) for MNIST attack
     'VarReducedZOL2L-Attack': {
         'nn_optimizer': nn_optimizer.zoopt.VarReducedZOOptimizer,
         'optimizee': optimizee.mnist.MnistAttack,
@@ -38,7 +41,6 @@ tasks = {
         'test_optimizer_steps': 200,
         'attack_model': optimizee.mnist.MnistConvModel,
         'attack_model_ckpt': "./ckpt/attack_model/mnist_cnn.pt",
-        'warm_start_ckpt': "./output/ZO_attack_mnist_2/ckpt_best",
         'tests': {
             'test_idx': 1,
             'n_steps': 200,
