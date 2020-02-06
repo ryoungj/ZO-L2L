@@ -97,6 +97,7 @@ def train_optimizer_attack(args):
                         loss = meta_model.loss(f_x, target)
                     else:
                         # Use zeroth-order method to train the zeroth-order optimizer
+                        # Approximate the gradient
                         loss = optimizee.custom_loss(meta_model.weight, data, target, meta_model.nondiff_loss)
 
                     loss_sum += (k * args.truncated_bptt_step + j) * (loss - Variable(prev_loss))

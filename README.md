@@ -11,17 +11,20 @@ This repository contains the code for [Learning to Learn by Zeroth-Order Oracle]
 We include the MNIST attack experiment here.
 
 ### Train the ZO optimizer
-Train the UpdateRNN
+* Train the UpdateRNN
 ```bash
 python main_attack.py --exp_name ZO_attack_mnist --train_task ZOL2L-Attack --gpu_num 0 --train optimizer_attack
 ```
-Train the QueryRNN (freeze the UpdateRNN)
+* Train the QueryRNN (freeze the UpdateRNN)
 ```bash
 python main_attack.py --exp_name VarReduced_ZO_attack_mnist --train_task VarReducedZOL2L-Attack --gpu_num 0 --train optimizer_attack --warm_start_ckpt ./output/ZO_attack_mnist/ckpt_best
 ```
+By default, first-order method is used to train the zeroth-order optimizer (assume the gradient of the optimizee is 
+available at training time). You can also add `--use_finite_diff` to use the zeroth-order method (approximate the gradient) 
+to train the optimizer, which needs more computation at training time.
 
 ### Test the ZO optimizer
-Test the learned ZO optimizer and compare with baseline ZO optimization algorithms
+* Test the learned ZO optimizer and compare with baseline ZO optimization algorithms
 ```bash
 python main_attack.py --exp_name VarReduced_ZO_attack_mnist --train_task VarReducedZOL2L-Attack --gpu_num 0 --train optimizer_train_optimizee_attack --ckpt_path ckpt_best --save_loss
 ```
