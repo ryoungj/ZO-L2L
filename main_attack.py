@@ -28,6 +28,8 @@ def train_optimizer_attack(args):
     assert "Attack" in args.train_task
     task = train_task_list.tasks[args.train_task]
 
+    print("Training ZO optimizer...\nOptimizer: {}. Optimizee: {}".format(task["nn_optimizer"].__name__, task["optimizee"].__name__))
+
     attack_model = task["attack_model"]()  # targeted model to attack
     if args.cuda:
         attack_model.cuda(args.gpu_num)
