@@ -28,7 +28,8 @@ to train the optimizer, which needs more computation at training time.
 ```bash
 python main_attack.py --exp_name VarReduced_ZO_attack_mnist --train_task VarReducedZOL2L-Attack --gpu_num 0 --train optimizer_train_optimizee_attack --ckpt_path ckpt_best --save_loss
 ```
-Adding `--save_fig` to the command plots the loss curves of each algorithm for comparison. 
+Adding `--save_fig` to the command plots the loss curves of each algorithm for comparison.  
+The test settings are listed in the `tests` dict of the corresponding task in `train_task_list.py`, which can be modified easily.
 
 ## Customization
 New zeroth-order optimization problems and optimizers can be implemented easily on this code base. You can add new 

@@ -19,10 +19,10 @@ tasks = {
         'attack_model': optimizee.mnist.MnistConvModel,
         'attack_model_ckpt': "./ckpt/attack_model/mnist_cnn.pt",
         'tests': {
-            'test_idx': 1,
-            'test_num': 1,
-            'n_steps': 200,
             'optimizee': optimizee.mnist.MnistAttack,
+            'test_indexes': list(range(1, 11)),  # test image indexes
+            'test_num': 10,  # number of independent attacks
+            'n_steps': 200,
             'test_batch_size': 1,
             'nn_opt': nn_optimizer.zoopt.ZOOptimizer,
             'base_opt': nn_optimizer.basezoopt.BaseZOOptimizer,
@@ -42,10 +42,10 @@ tasks = {
         'attack_model': optimizee.mnist.MnistConvModel,
         'attack_model_ckpt': "./ckpt/attack_model/mnist_cnn.pt",
         'tests': {
-            'test_idx': 1,
-            'n_steps': 200,
-            'test_num': 10,
             'optimizee': optimizee.mnist.MnistAttack,
+            'test_indexes': list(range(1, 11)),  # test image indexes
+            'test_num': 10,  # number of independent attacks
+            'n_steps': 200,
             'test_batch_size': 1,
             'nn_opt': nn_optimizer.zoopt.VarReducedZOOptimizer,
             'base_opt': nn_optimizer.basezoopt.BaseZOOptimizer,

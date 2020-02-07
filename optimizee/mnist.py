@@ -96,7 +96,7 @@ class MnistAttack(optimizee.Optimizee):
         self.loss_type = loss_type
 
     @staticmethod
-    def dataset_loader(data_dir, batch_size, test_batch_size, train_num=100, test_num=10):
+    def dataset_loader(data_dir, batch_size, test_batch_size, train_num=100, test_num=100):
         path = os.path.join(data_dir, "mnist_correct/label_correct_index.npy")
         label_correct_indices = list(np.load(path))
         random.seed(1234)

@@ -177,331 +177,332 @@ def optimizer_train_optimizee_attack(args):
     attack_model.eval()
     attack_model.reset()  # not include parameters
 
-    _, test_loader = task["tests"]["optimizee"].dataset_loader(args.data_dir, task['batch_size'],
-                                                               task['tests']['test_batch_size'])
-    test_loader = iter(test_loader)
+    for test_idx in task['tests']['test_indexes']:
+        _, test_loader = task["tests"]["optimizee"].dataset_loader(args.data_dir, task['batch_size'],
+                                                                   task['tests']['test_batch_size'])
+        test_loader = iter(test_loader)
 
-    for _ in range(task["tests"]["test_idx"]):
-        data, target = next(test_loader)
+        for _ in range(test_idx):  # attacked image
+            data, target = next(test_loader)
 
-    data, target = Variable(data.double()), Variable(target)
-    if args.cuda:
-        data, target = data.cuda(args.gpu_num), target.cuda(args.gpu_num)
-
-    meta_model = task["tests"]["optimizee"](optimizee.AttackModel(attack_model), task['tests']['test_batch_size'])
-    if args.cuda:
-        meta_model.cuda(args.gpu_num)
-
-    ckpt_path = os.path.join(args.output_dir, args.ckpt_path)
-
-    # ZO-LSTM (leanred ZO optimizer)
-    if "nn_opt" in task["tests"]:
-        meta_optimizer = task["nn_optimizer"](optimizee.MetaModel(meta_model), args)
+        data, target = Variable(data.double()), Variable(target)
         if args.cuda:
-            meta_optimizer.cuda(args.gpu_num)
-        meta_optimizer.load(ckpt_path)
-        meta_optimizer.eval()
-        nn_opt_loss_array = []
+            data, target = data.cuda(args.gpu_num), target.cuda(args.gpu_num)
 
-    # ZO-SGD
-    if "base_opt" in task["tests"]:
-        base_optimizer = task["tests"]["base_opt"](None, args, task["tests"]["base_lr"])
-        base_optimizer.eval()
-        base_opt_loss_array = []
-
-    # ZO-signSGD
-    if "sign_opt" in task["tests"]:
-        sign_optimizer = task["tests"]["sign_opt"](None, args, task["tests"]["sign_lr"])
-        sign_optimizer.eval()
-        sign_opt_loss_array = []
-
-    # ZO-ADAM
-    if "adam_opt" in task["tests"]:
-        adam_optimizer = task["tests"]["adam_opt"](None, args, task["tests"]["adam_lr"], task["tests"]["adam_beta_1"],
-                                                   task["tests"]["adam_beta_2"])
-        adam_optimizer.eval()
-        adam_opt_loss_array = []
-
-    # ZO-LSTM-no-query (without QueryRNN)
-    if "nn_opt_no_query" in task["tests"]:
-        meta_model_2 = task["tests"]["optimizee"](optimizee.AttackModel(attack_model), task['tests']['test_batch_size'])
+        meta_model = task["tests"]["optimizee"](optimizee.AttackModel(attack_model), task['tests']['test_batch_size'])
         if args.cuda:
-            meta_model_2.cuda(args.gpu_num)
+            meta_model.cuda(args.gpu_num)
 
-        nn_optimizer_no_query = task["tests"]["nn_opt_no_query"](optimizee.MetaModel(meta_model_2), args)
-        if args.cuda:
-            nn_optimizer_no_query.cuda(args.gpu_num)
-        nn_optimizer_no_query.load(ckpt_path)
-        nn_optimizer_no_query.eval()
-        nn_opt_no_query_loss_array = []
+        ckpt_path = os.path.join(args.output_dir, args.ckpt_path)
 
-    # ZO-LSTM-no-update (without UpdateRNN)
-    if "nn_opt_no_update" in task["tests"]:
-        meta_model_3 = task["tests"]["optimizee"](optimizee.AttackModel(attack_model), task['tests']['test_batch_size'])
-        if args.cuda:
-            meta_model_3.cuda(args.gpu_num)
-
-        nn_optimizer_no_update = task["tests"]["nn_opt_no_update"](optimizee.MetaModel(meta_model_3), args)
-        if args.cuda:
-            nn_optimizer_no_update.cuda(args.gpu_num)
-        nn_optimizer_no_update.load(ckpt_path)
-        nn_optimizer_no_update.eval()
-        nn_opt_no_update_loss_array = []
-
-    # ZO-LSTM-guided (use Guided-ES to modify search distribution)
-    if "nn_opt_guided" in task["tests"]:
-        meta_model_4 = task["tests"]["optimizee"](optimizee.AttackModel(attack_model), task['tests']['test_batch_size'])
-        if args.cuda:
-            meta_model_4.cuda(args.gpu_num)
-
-        nn_optimizer_guided = task["tests"]["nn_opt_guided"](optimizee.MetaModel(meta_model_4), args)
-        if args.cuda:
-            nn_optimizer_guided.cuda(args.gpu_num)
-        nn_optimizer_guided.load(ckpt_path)
-        nn_optimizer_guided.eval()
-        nn_opt_guided_loss_array = []
-
-    for num in range(1, task["tests"]["test_num"] + 1):
-        model = task["tests"]["optimizee"](optimizee.AttackModel(attack_model), task['tests']['test_batch_size'])
-        if args.cuda:
-            model.cuda(args.gpu_num)
-
+        # ZO-LSTM (leanred ZO optimizer)
         if "nn_opt" in task["tests"]:
-            meta_optimizer.reset_state(
-                keep_states=False, model=model, use_cuda=args.cuda, gpu_num=args.gpu_num)
-            nn_opt_state = copy.deepcopy(model.state_dict())
+            meta_optimizer = task["nn_optimizer"](optimizee.MetaModel(meta_model), args)
+            if args.cuda:
+                meta_optimizer.cuda(args.gpu_num)
+            meta_optimizer.load(ckpt_path)
+            meta_optimizer.eval()
+            nn_opt_loss_array = []
 
+        # ZO-SGD
         if "base_opt" in task["tests"]:
-            base_opt_state = copy.deepcopy(model.state_dict())
+            base_optimizer = task["tests"]["base_opt"](None, args, task["tests"]["base_lr"])
+            base_optimizer.eval()
+            base_opt_loss_array = []
 
+        # ZO-signSGD
         if "sign_opt" in task["tests"]:
-            sign_opt_state = copy.deepcopy(model.state_dict())
+            sign_optimizer = task["tests"]["sign_opt"](None, args, task["tests"]["sign_lr"])
+            sign_optimizer.eval()
+            sign_opt_loss_array = []
 
+        # ZO-ADAM
         if "adam_opt" in task["tests"]:
-            adam_optimizer.reset_state(
-                keep_states=False, model=model, use_cuda=args.cuda, gpu_num=args.gpu_num)
-            adam_opt_state = copy.deepcopy(model.state_dict())
+            adam_optimizer = task["tests"]["adam_opt"](None, args, task["tests"]["adam_lr"], task["tests"]["adam_beta_1"],
+                                                       task["tests"]["adam_beta_2"])
+            adam_optimizer.eval()
+            adam_opt_loss_array = []
 
+        # ZO-LSTM-no-query (without QueryRNN)
         if "nn_opt_no_query" in task["tests"]:
-            nn_optimizer_no_query.reset_state(
-                keep_states=False, model=model, use_cuda=args.cuda, gpu_num=args.gpu_num)
-            nn_opt_no_query_state = copy.deepcopy(model.state_dict())
+            meta_model_2 = task["tests"]["optimizee"](optimizee.AttackModel(attack_model), task['tests']['test_batch_size'])
+            if args.cuda:
+                meta_model_2.cuda(args.gpu_num)
 
+            nn_optimizer_no_query = task["tests"]["nn_opt_no_query"](optimizee.MetaModel(meta_model_2), args)
+            if args.cuda:
+                nn_optimizer_no_query.cuda(args.gpu_num)
+            nn_optimizer_no_query.load(ckpt_path)
+            nn_optimizer_no_query.eval()
+            nn_opt_no_query_loss_array = []
+
+        # ZO-LSTM-no-update (without UpdateRNN)
         if "nn_opt_no_update" in task["tests"]:
-            nn_optimizer_no_update.reset_state(
-                keep_states=False, model=model, use_cuda=args.cuda, gpu_num=args.gpu_num)
-            nn_opt_no_update_state = copy.deepcopy(model.state_dict())
+            meta_model_3 = task["tests"]["optimizee"](optimizee.AttackModel(attack_model), task['tests']['test_batch_size'])
+            if args.cuda:
+                meta_model_3.cuda(args.gpu_num)
 
+            nn_optimizer_no_update = task["tests"]["nn_opt_no_update"](optimizee.MetaModel(meta_model_3), args)
+            if args.cuda:
+                nn_optimizer_no_update.cuda(args.gpu_num)
+            nn_optimizer_no_update.load(ckpt_path)
+            nn_optimizer_no_update.eval()
+            nn_opt_no_update_loss_array = []
+
+        # ZO-LSTM-guided (use Guided-ES to modify search distribution)
         if "nn_opt_guided" in task["tests"]:
-            nn_optimizer_guided.reset_state(
-                keep_states=False, model=model, use_cuda=args.cuda, gpu_num=args.gpu_num)
-            nn_opt_guided_state = copy.deepcopy(model.state_dict())
+            meta_model_4 = task["tests"]["optimizee"](optimizee.AttackModel(attack_model), task['tests']['test_batch_size'])
+            if args.cuda:
+                meta_model_4.cuda(args.gpu_num)
 
-        for step in range(1, task["tests"]["n_steps"] + 1):
-            msg = "iteration {}".format(step)
+            nn_optimizer_guided = task["tests"]["nn_opt_guided"](optimizee.MetaModel(meta_model_4), args)
+            if args.cuda:
+                nn_optimizer_guided.cuda(args.gpu_num)
+            nn_optimizer_guided.load(ckpt_path)
+            nn_optimizer_guided.eval()
+            nn_opt_guided_loss_array = []
 
-            # nn_opt
+        for num in range(1, task["tests"]["test_num"] + 1):
+            model = task["tests"]["optimizee"](optimizee.AttackModel(attack_model), task['tests']['test_batch_size'])
+            if args.cuda:
+                model.cuda(args.gpu_num)
+
             if "nn_opt" in task["tests"]:
-                model.load_state_dict(nn_opt_state)
-                with torch.no_grad():
-                    _, nn_opt_loss, nn_f_x = meta_optimizer.meta_update(model, data, target)
+                meta_optimizer.reset_state(
+                    keep_states=False, model=model, use_cuda=args.cuda, gpu_num=args.gpu_num)
                 nn_opt_state = copy.deepcopy(model.state_dict())
 
-                msg += ", nn_opt_loss {:.6f}".format(nn_opt_loss.data.item())
-                nn_opt_loss_array.append(nn_opt_loss.data.item())
-
-            # base_opt
             if "base_opt" in task["tests"]:
-                model.load_state_dict(base_opt_state)
-                with torch.no_grad():
-                    _, base_opt_loss, base_f_x = base_optimizer.meta_update(model, data, target)
                 base_opt_state = copy.deepcopy(model.state_dict())
-                msg = msg + ", base_opt_loss {:.6f}".format(base_opt_loss.data.item())
-                base_opt_loss_array.append(base_opt_loss.data.item())
 
-            # sign_opt
             if "sign_opt" in task["tests"]:
-                model.load_state_dict(sign_opt_state)
-                with torch.no_grad():
-                    _, sign_opt_loss, sign_f_x = sign_optimizer.meta_update(model, data, target)
                 sign_opt_state = copy.deepcopy(model.state_dict())
-                msg = msg + ", sign_opt_loss {:.6f}".format(sign_opt_loss.data.item())
-                sign_opt_loss_array.append(sign_opt_loss.data.item())
 
             if "adam_opt" in task["tests"]:
-                model.load_state_dict(adam_opt_state)
-                with torch.no_grad():
-                    _, adam_opt_loss, adam_f_x = adam_optimizer.meta_update(model, data, target)
+                adam_optimizer.reset_state(
+                    keep_states=False, model=model, use_cuda=args.cuda, gpu_num=args.gpu_num)
                 adam_opt_state = copy.deepcopy(model.state_dict())
-                msg = msg + ", adam_opt_loss {:.6f}".format(adam_opt_loss.data.item())
-                adam_opt_loss_array.append(adam_opt_loss.data.item())
 
             if "nn_opt_no_query" in task["tests"]:
-                model.load_state_dict(nn_opt_no_query_state)
-                with torch.no_grad():
-                    _, nn_opt_no_query_loss, nn_no_query_f_x = nn_optimizer_no_query.meta_update(model, data, target,
-                                                                                                 pred_query=False)
+                nn_optimizer_no_query.reset_state(
+                    keep_states=False, model=model, use_cuda=args.cuda, gpu_num=args.gpu_num)
                 nn_opt_no_query_state = copy.deepcopy(model.state_dict())
-                msg = msg + ", nn_opt_no_query_loss {:.6f}".format(nn_opt_no_query_loss.data.item())
-                nn_opt_no_query_loss_array.append(nn_opt_no_query_loss.data.item())
 
             if "nn_opt_no_update" in task["tests"]:
-                model.load_state_dict(nn_opt_no_update_state)
-                with torch.no_grad():
-                    _, nn_opt_no_update_loss, nn_no_update_f_x = nn_optimizer_no_update.meta_update(model, data, target,
-                                                                                                    pred_update=False,
-                                                                                                    base_lr=
-                                                                                                    task["tests"][
-                                                                                                        "base_lr"])
+                nn_optimizer_no_update.reset_state(
+                    keep_states=False, model=model, use_cuda=args.cuda, gpu_num=args.gpu_num)
                 nn_opt_no_update_state = copy.deepcopy(model.state_dict())
-                msg = msg + ", nn_opt_no_update_loss {:.6f}".format(nn_opt_no_update_loss.data.item())
-                nn_opt_no_update_loss_array.append(nn_opt_no_update_loss.data.item())
 
             if "nn_opt_guided" in task["tests"]:
-                model.load_state_dict(nn_opt_guided_state)
-                with torch.no_grad():
-                    _, nn_opt_guided_loss, nn_guided_f_x = nn_optimizer_guided.meta_update(model, data, target,
-                                                                                           guided=True,
-                                                                                           base_lr=
-                                                                                           task["tests"][
-                                                                                               "base_lr"])
+                nn_optimizer_guided.reset_state(
+                    keep_states=False, model=model, use_cuda=args.cuda, gpu_num=args.gpu_num)
                 nn_opt_guided_state = copy.deepcopy(model.state_dict())
-                msg = msg + ", nn_opt_guided_loss {:.6f}".format(nn_opt_guided_loss.data.item())
-                nn_opt_guided_loss_array.append(nn_opt_guided_loss.data.item())
-            print(msg)
 
-        if args.save_loss:
-            if "nn_opt" in task["tests"]:
-                np.save(
-                    os.path.join(args.output_dir,
-                                 "nn_opt_loss_array_{}_q_{}.npy".format(task["tests"]["test_idx"],
-                                                                        args.grad_est_q)),
-                    np.array(nn_opt_loss_array))
+            for step in range(1, task["tests"]["n_steps"] + 1):
+                msg = "iteration {}".format(step)
+
+                # nn_opt
+                if "nn_opt" in task["tests"]:
+                    model.load_state_dict(nn_opt_state)
+                    with torch.no_grad():
+                        _, nn_opt_loss, nn_f_x = meta_optimizer.meta_update(model, data, target)
+                    nn_opt_state = copy.deepcopy(model.state_dict())
+
+                    msg += ", nn_opt_loss {:.6f}".format(nn_opt_loss.data.item())
+                    nn_opt_loss_array.append(nn_opt_loss.data.item())
+
+                # base_opt
+                if "base_opt" in task["tests"]:
+                    model.load_state_dict(base_opt_state)
+                    with torch.no_grad():
+                        _, base_opt_loss, base_f_x = base_optimizer.meta_update(model, data, target)
+                    base_opt_state = copy.deepcopy(model.state_dict())
+                    msg = msg + ", base_opt_loss {:.6f}".format(base_opt_loss.data.item())
+                    base_opt_loss_array.append(base_opt_loss.data.item())
+
+                # sign_opt
+                if "sign_opt" in task["tests"]:
+                    model.load_state_dict(sign_opt_state)
+                    with torch.no_grad():
+                        _, sign_opt_loss, sign_f_x = sign_optimizer.meta_update(model, data, target)
+                    sign_opt_state = copy.deepcopy(model.state_dict())
+                    msg = msg + ", sign_opt_loss {:.6f}".format(sign_opt_loss.data.item())
+                    sign_opt_loss_array.append(sign_opt_loss.data.item())
+
+                if "adam_opt" in task["tests"]:
+                    model.load_state_dict(adam_opt_state)
+                    with torch.no_grad():
+                        _, adam_opt_loss, adam_f_x = adam_optimizer.meta_update(model, data, target)
+                    adam_opt_state = copy.deepcopy(model.state_dict())
+                    msg = msg + ", adam_opt_loss {:.6f}".format(adam_opt_loss.data.item())
+                    adam_opt_loss_array.append(adam_opt_loss.data.item())
+
+                if "nn_opt_no_query" in task["tests"]:
+                    model.load_state_dict(nn_opt_no_query_state)
+                    with torch.no_grad():
+                        _, nn_opt_no_query_loss, nn_no_query_f_x = nn_optimizer_no_query.meta_update(model, data, target,
+                                                                                                     pred_query=False)
+                    nn_opt_no_query_state = copy.deepcopy(model.state_dict())
+                    msg = msg + ", nn_opt_no_query_loss {:.6f}".format(nn_opt_no_query_loss.data.item())
+                    nn_opt_no_query_loss_array.append(nn_opt_no_query_loss.data.item())
+
+                if "nn_opt_no_update" in task["tests"]:
+                    model.load_state_dict(nn_opt_no_update_state)
+                    with torch.no_grad():
+                        _, nn_opt_no_update_loss, nn_no_update_f_x = nn_optimizer_no_update.meta_update(model, data, target,
+                                                                                                        pred_update=False,
+                                                                                                        base_lr=
+                                                                                                        task["tests"][
+                                                                                                            "base_lr"])
+                    nn_opt_no_update_state = copy.deepcopy(model.state_dict())
+                    msg = msg + ", nn_opt_no_update_loss {:.6f}".format(nn_opt_no_update_loss.data.item())
+                    nn_opt_no_update_loss_array.append(nn_opt_no_update_loss.data.item())
+
+                if "nn_opt_guided" in task["tests"]:
+                    model.load_state_dict(nn_opt_guided_state)
+                    with torch.no_grad():
+                        _, nn_opt_guided_loss, nn_guided_f_x = nn_optimizer_guided.meta_update(model, data, target,
+                                                                                               guided=True,
+                                                                                               base_lr=
+                                                                                               task["tests"][
+                                                                                                   "base_lr"])
+                    nn_opt_guided_state = copy.deepcopy(model.state_dict())
+                    msg = msg + ", nn_opt_guided_loss {:.6f}".format(nn_opt_guided_loss.data.item())
+                    nn_opt_guided_loss_array.append(nn_opt_guided_loss.data.item())
+                print(msg)
+
+            if args.save_loss:
+                if "nn_opt" in task["tests"]:
+                    np.save(
+                        os.path.join(args.output_dir,
+                                     "nn_opt_loss_array_{}_q_{}.npy".format(test_idx,
+                                                                            args.grad_est_q)),
+                        np.array(nn_opt_loss_array))
+                if "base_opt" in task["tests"]:
+                    np.save(
+                        os.path.join(args.output_dir,
+                                     "base_opt_loss_array_{}_q_{}.npy".format(test_idx,
+                                                                              args.grad_est_q)),
+                        np.array(base_opt_loss_array))
+                if "sign_opt" in task["tests"]:
+                    np.save(
+                        os.path.join(args.output_dir,
+                                     "sign_opt_loss_array_{}_q_{}.npy".format(test_idx,
+                                                                              args.grad_est_q)),
+                        np.array(sign_opt_loss_array))
+                if "adam_opt" in task["tests"]:
+                    np.save(
+                        os.path.join(args.output_dir,
+                                     "adam_opt_loss_array_{}_q_{}.npy".format(test_idx,
+                                                                              args.grad_est_q)),
+                        np.array(adam_opt_loss_array))
+                if "nn_opt_no_query" in task["tests"]:
+                    np.save(os.path.join(args.output_dir,
+                                         "nn_opt_no_query_loss_array_{}_q_{}.npy".format(test_idx,
+                                                                                         args.grad_est_q)),
+                            np.array(nn_opt_no_query_loss_array))
+                if "nn_opt_no_update" in task["tests"]:
+                    np.save(os.path.join(args.output_dir,
+                                         "nn_opt_no_update_loss_array_{}_q_{}.npy".format(test_idx,
+                                                                                          args.grad_est_q)),
+                            np.array(nn_opt_no_update_loss_array))
+                if "nn_opt_guided" in task["tests"]:
+                    np.save(os.path.join(args.output_dir,
+                                         "nn_opt_guided_loss_array_{}_q_{}.npy".format(test_idx,
+                                                                                       args.grad_est_q)),
+                            np.array(nn_opt_guided_loss_array))
+            print("Test num {}, test idx {}, done!".format(num, test_idx))
+
+        if args.save_fig:
+            assert args.save_loss
+            fig = plt.figure(figsize=(8, 6))
+            iteration = np.arange(1, task["tests"]["n_steps"] + 1)
             if "base_opt" in task["tests"]:
-                np.save(
-                    os.path.join(args.output_dir,
-                                 "base_opt_loss_array_{}_q_{}.npy".format(task["tests"]["test_idx"],
-                                                                          args.grad_est_q)),
-                    np.array(base_opt_loss_array))
+                base_opt_loss_array = np.load(os.path.join(args.output_dir,
+                                                           "base_opt_loss_array_{}_q_{}.npy".format(
+                                                               test_idx,
+                                                               args.grad_est_q))).reshape(
+                    (task["tests"]["test_num"], task["tests"]["n_steps"]))
+                base_opt_mean = np.mean(base_opt_loss_array, axis=0)
+                base_opt_std = np.std(base_opt_loss_array, axis=0)
+                plt.plot(iteration, base_opt_mean, 'c', label='ZO-SGD')
+                plt.fill_between(iteration, base_opt_mean - base_opt_std, base_opt_mean + base_opt_std, color='c',
+                                 alpha=0.2)
+
             if "sign_opt" in task["tests"]:
-                np.save(
-                    os.path.join(args.output_dir,
-                                 "sign_opt_loss_array_{}_q_{}.npy".format(task["tests"]["test_idx"],
-                                                                          args.grad_est_q)),
-                    np.array(sign_opt_loss_array))
+                sign_opt_loss_array = np.load(os.path.join(args.output_dir,
+                                                           "sign_opt_loss_array_{}_q_{}.npy".format(
+                                                               test_idx,
+                                                               args.grad_est_q))).reshape(
+                    (task["tests"]["test_num"], task["tests"]["n_steps"]))
+                sign_opt_mean = np.mean(sign_opt_loss_array, axis=0)
+                sign_opt_std = np.std(sign_opt_loss_array, axis=0)
+                plt.plot(iteration, sign_opt_mean, 'g', label='ZO-signSGD')
+                plt.fill_between(iteration, sign_opt_mean - sign_opt_std, sign_opt_mean + sign_opt_std, color='g',
+                                 alpha=0.2)
+
             if "adam_opt" in task["tests"]:
-                np.save(
-                    os.path.join(args.output_dir,
-                                 "adam_opt_loss_array_{}_q_{}.npy".format(task["tests"]["test_idx"],
-                                                                          args.grad_est_q)),
-                    np.array(adam_opt_loss_array))
+                adam_opt_loss_array = np.load(os.path.join(args.output_dir,
+                                                           "adam_opt_loss_array_{}_q_{}.npy".format(
+                                                               test_idx,
+                                                               args.grad_est_q))).reshape(
+                    (task["tests"]["test_num"], task["tests"]["n_steps"]))
+                adam_opt_mean = np.mean(adam_opt_loss_array, axis=0)
+                adam_opt_std = np.std(adam_opt_loss_array, axis=0)
+                plt.plot(iteration, adam_opt_mean, 'darkorange', label='ZO-ADAM')
+                plt.fill_between(iteration, adam_opt_mean - adam_opt_std, adam_opt_mean + adam_opt_std, color='darkorange',
+                                 alpha=0.2)
+
+            if "nn_opt" in task["tests"]:
+                nn_opt_loss_array = np.load(os.path.join(args.output_dir,
+                                                         "nn_opt_loss_array_{}_q_{}.npy".format(test_idx,
+                                                                                                args.grad_est_q))).reshape(
+                    (task["tests"]["test_num"], task["tests"]["n_steps"]))
+                nn_opt_mean = np.mean(nn_opt_loss_array, axis=0)
+                nn_opt_std = np.std(nn_opt_loss_array, axis=0)
+                plt.plot(iteration, nn_opt_mean, 'b', label='ZO-LSTM')
+                plt.fill_between(iteration, nn_opt_mean - nn_opt_std, nn_opt_mean + nn_opt_std, color='b', alpha=0.2)
+
             if "nn_opt_no_query" in task["tests"]:
-                np.save(os.path.join(args.output_dir,
-                                     "nn_opt_no_query_loss_array_{}_q_{}.npy".format(task["tests"]["test_idx"],
-                                                                                     args.grad_est_q)),
-                        np.array(nn_opt_no_query_loss_array))
+                nn_opt_no_query_loss_array = np.load(os.path.join(args.output_dir,
+                                                                  "nn_opt_no_query_loss_array_{}_q_{}.npy".format(
+                                                                      test_idx,
+                                                                      args.grad_est_q))).reshape(
+                    (task["tests"]["test_num"], task["tests"]["n_steps"]))
+                nn_opt_no_query_mean = np.mean(nn_opt_no_query_loss_array, axis=0)
+                nn_opt_no_query_std = np.std(nn_opt_no_query_loss_array, axis=0)
+                plt.plot(iteration, nn_opt_no_query_mean, 'r', label='ZO-LSTM-no-query')
+                plt.fill_between(iteration, nn_opt_no_query_mean - nn_opt_no_query_std,
+                                 nn_opt_no_query_mean + nn_opt_no_query_std, color='r', alpha=0.2)
+
             if "nn_opt_no_update" in task["tests"]:
-                np.save(os.path.join(args.output_dir,
-                                     "nn_opt_no_update_loss_array_{}_q_{}.npy".format(task["tests"]["test_idx"],
-                                                                                      args.grad_est_q)),
-                        np.array(nn_opt_no_update_loss_array))
+                nn_opt_no_update_loss_array = np.load(os.path.join(args.output_dir,
+                                                                   "nn_opt_no_update_loss_array_{}_q_{}.npy".format(
+                                                                       test_idx,
+                                                                       args.grad_est_q))).reshape(
+                    (task["tests"]["test_num"], task["tests"]["n_steps"]))
+                nn_opt_no_update_mean = np.mean(nn_opt_no_update_loss_array, axis=0)
+                nn_opt_no_update_std = np.std(nn_opt_no_update_loss_array, axis=0)
+                plt.plot(iteration, nn_opt_no_update_mean, 'm', label='ZO-LSTM-no-update')
+                plt.fill_between(iteration, nn_opt_no_update_mean - nn_opt_no_update_std,
+                                 nn_opt_no_update_mean + nn_opt_no_update_std, color='m', alpha=0.2)
+
             if "nn_opt_guided" in task["tests"]:
-                np.save(os.path.join(args.output_dir,
-                                     "nn_opt_guided_loss_array_{}_q_{}.npy".format(task["tests"]["test_idx"],
-                                                                                   args.grad_est_q)),
-                        np.array(nn_opt_guided_loss_array))
-        print("Test num {}, test idx {}, done!".format(num, task["tests"]["test_idx"]))
-
-    if args.save_fig:
-        assert args.save_loss
-        fig = plt.figure(figsize=(8, 6))
-        iteration = np.arange(1, task["tests"]["n_steps"] + 1)
-        if "base_opt" in task["tests"]:
-            base_opt_loss_array = np.load(os.path.join(args.output_dir,
-                                                       "base_opt_loss_array_{}_q_{}.npy".format(
-                                                           task["tests"]["test_idx"],
-                                                           args.grad_est_q))).reshape(
-                (task["tests"]["test_num"], task["tests"]["n_steps"]))
-            base_opt_mean = np.mean(base_opt_loss_array, axis=0)
-            base_opt_std = np.std(base_opt_loss_array, axis=0)
-            plt.plot(iteration, base_opt_mean, 'c', label='ZO-SGD')
-            plt.fill_between(iteration, base_opt_mean - base_opt_std, base_opt_mean + base_opt_std, color='c',
-                             alpha=0.2)
-
-        if "sign_opt" in task["tests"]:
-            sign_opt_loss_array = np.load(os.path.join(args.output_dir,
-                                                       "sign_opt_loss_array_{}_q_{}.npy".format(
-                                                           task["tests"]["test_idx"],
-                                                           args.grad_est_q))).reshape(
-                (task["tests"]["test_num"], task["tests"]["n_steps"]))
-            sign_opt_mean = np.mean(sign_opt_loss_array, axis=0)
-            sign_opt_std = np.std(sign_opt_loss_array, axis=0)
-            plt.plot(iteration, sign_opt_mean, 'g', label='ZO-signSGD')
-            plt.fill_between(iteration, sign_opt_mean - sign_opt_std, sign_opt_mean + sign_opt_std, color='g',
-                             alpha=0.2)
-
-        if "adam_opt" in task["tests"]:
-            adam_opt_loss_array = np.load(os.path.join(args.output_dir,
-                                                       "adam_opt_loss_array_{}_q_{}.npy".format(
-                                                           task["tests"]["test_idx"],
-                                                           args.grad_est_q))).reshape(
-                (task["tests"]["test_num"], task["tests"]["n_steps"]))
-            adam_opt_mean = np.mean(adam_opt_loss_array, axis=0)
-            adam_opt_std = np.std(adam_opt_loss_array, axis=0)
-            plt.plot(iteration, adam_opt_mean, 'darkorange', label='ZO-ADAM')
-            plt.fill_between(iteration, adam_opt_mean - adam_opt_std, adam_opt_mean + adam_opt_std, color='darkorange',
-                             alpha=0.2)
-
-        if "nn_opt" in task["tests"]:
-            nn_opt_loss_array = np.load(os.path.join(args.output_dir,
-                                                     "nn_opt_loss_array_{}_q_{}.npy".format(task["tests"]["test_idx"],
-                                                                                            args.grad_est_q))).reshape(
-                (task["tests"]["test_num"], task["tests"]["n_steps"]))
-            nn_opt_mean = np.mean(nn_opt_loss_array, axis=0)
-            nn_opt_std = np.std(nn_opt_loss_array, axis=0)
-            plt.plot(iteration, nn_opt_mean, 'b', label='ZO-LSTM')
-            plt.fill_between(iteration, nn_opt_mean - nn_opt_std, nn_opt_mean + nn_opt_std, color='b', alpha=0.2)
-
-        if "nn_opt_no_query" in task["tests"]:
-            nn_opt_no_query_loss_array = np.load(os.path.join(args.output_dir,
-                                                              "nn_opt_no_query_loss_array_{}_q_{}.npy".format(
-                                                                  task["tests"]["test_idx"],
-                                                                  args.grad_est_q))).reshape(
-                (task["tests"]["test_num"], task["tests"]["n_steps"]))
-            nn_opt_no_query_mean = np.mean(nn_opt_no_query_loss_array, axis=0)
-            nn_opt_no_query_std = np.std(nn_opt_no_query_loss_array, axis=0)
-            plt.plot(iteration, nn_opt_no_query_mean, 'r', label='ZO-LSTM-no-query')
-            plt.fill_between(iteration, nn_opt_no_query_mean - nn_opt_no_query_std,
-                             nn_opt_no_query_mean + nn_opt_no_query_std, color='r', alpha=0.2)
-
-        if "nn_opt_no_update" in task["tests"]:
-            nn_opt_no_update_loss_array = np.load(os.path.join(args.output_dir,
-                                                               "nn_opt_no_update_loss_array_{}_q_{}.npy".format(
-                                                                   task["tests"]["test_idx"],
-                                                                   args.grad_est_q))).reshape(
-                (task["tests"]["test_num"], task["tests"]["n_steps"]))
-            nn_opt_no_update_mean = np.mean(nn_opt_no_update_loss_array, axis=0)
-            nn_opt_no_update_std = np.std(nn_opt_no_update_loss_array, axis=0)
-            plt.plot(iteration, nn_opt_no_update_mean, 'm', label='ZO-LSTM-no-update')
-            plt.fill_between(iteration, nn_opt_no_update_mean - nn_opt_no_update_std,
-                             nn_opt_no_update_mean + nn_opt_no_update_std, color='m', alpha=0.2)
-
-        if "nn_opt_guided" in task["tests"]:
-            nn_opt_guided_loss_array = np.load(os.path.join(args.output_dir,
-                                                            "nn_opt_guided_loss_array_{}_q_{}.npy".format(
-                                                                task["tests"]["test_idx"],
-                                                                args.grad_est_q))).reshape(
-                (task["tests"]["test_num"], task["tests"]["n_steps"]))
-            nn_opt_guided_mean = np.mean(nn_opt_guided_loss_array, axis=0)
-            nn_opt_guided_std = np.std(nn_opt_guided_loss_array, axis=0)
-            plt.plot(iteration, nn_opt_guided_mean, 'saddlebrown', label='ZO-LSTM-GuidedES')
-            plt.fill_between(iteration, nn_opt_guided_mean - nn_opt_guided_std, nn_opt_guided_mean + nn_opt_guided_std,
-                             color='saddlebrown', alpha=0.2)
-        plt.xlabel('iteration', fontsize=15)
-        plt.ylabel('loss', fontsize=15)
-        plt.legend(prop={'size': 15})
-        fig.savefig(os.path.join(args.output_dir,
-                                 args.fig_preffix + '_{}_q_{}.png'.format(task["tests"]["test_idx"], args.grad_est_q)))
+                nn_opt_guided_loss_array = np.load(os.path.join(args.output_dir,
+                                                                "nn_opt_guided_loss_array_{}_q_{}.npy".format(
+                                                                    test_idx,
+                                                                    args.grad_est_q))).reshape(
+                    (task["tests"]["test_num"], task["tests"]["n_steps"]))
+                nn_opt_guided_mean = np.mean(nn_opt_guided_loss_array, axis=0)
+                nn_opt_guided_std = np.std(nn_opt_guided_loss_array, axis=0)
+                plt.plot(iteration, nn_opt_guided_mean, 'saddlebrown', label='ZO-LSTM-GuidedES')
+                plt.fill_between(iteration, nn_opt_guided_mean - nn_opt_guided_std, nn_opt_guided_mean + nn_opt_guided_std,
+                                 color='saddlebrown', alpha=0.2)
+            plt.xlabel('iteration', fontsize=15)
+            plt.ylabel('loss', fontsize=15)
+            plt.legend(prop={'size': 15})
+            fig.savefig(os.path.join(args.output_dir,
+                                     args.fig_preffix + '_{}_q_{}.png'.format(test_idx, args.grad_est_q)))
 
 
 def main(args):
